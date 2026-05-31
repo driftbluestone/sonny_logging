@@ -93,7 +93,7 @@ class ConfigSubButton(gui.MenuGUI):
         logging_config["unlogged_actions"].append(log)
         config.overwrite(logging_config)
         
-        view = ConfigSubButton(old_interaction, self.group)
+        view = ConfigSubButton(old_interaction, self.data_transfer)
         if logging_config["logs"][self.data_transfer][0] == 0:
             content = "Channel: None"
         else:
