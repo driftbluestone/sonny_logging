@@ -1,4 +1,3 @@
-import json
 from api import permission, config
 from utils import jsonIO
 from pathlib import Path

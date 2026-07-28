@@ -1,7 +1,6 @@
 import discord
 from discord import app_commands
-from discord.ext import commands
-from api import users
+from api import users, commands
 from . import configuration, event
 
 async def setup(bot: commands.Bot) -> None:
@@ -13,9 +12,9 @@ class Logging(commands.Cog):
     
     @app_commands.command(name="logging", description="Configure which channels which logs are sent to")
     async def channel(self, interaction: discord.Interaction):
-        if not await users.has_permission(interaction.user.id, "sonny_logging:log_admin"):
+        if not await users.has_permission(interaction.guild.id, interaction.user.id, "sonny_logging:log_admin"):
             return await interaction.response.send_message(":warning: No permission.",ephemeral=True)
-        await interaction.response.send_message(view=configuration.ConfigButton(interaction))
+        await interaction.response.send_message(view=configuration.ConfigButton())
     
     async def get_channel(self, action):
         if action not in configuration.logging_config["logged_actions"]: return False

@@ -3,11 +3,11 @@ from api import gui, users, config
 
 logging_config = config.get()
 
-class ConfigButton(gui.MenuGUI):
-    def __init__(self, interaction, _ = None, page = 1):
-        super().__init__(interaction=interaction,
-                         element_count=len(logging_config["logs"].keys()),
-                         interaction_permission="sonny_logging:log_admin"
+class ConfigButton(gui.PageUI):
+    def __init__(self, _ = None, page = 1):
+        super().__init__(element_count = len(logging_config["logs"].keys()),
+                         interaction_permission = "sonny_logging:log_admin",
+                         page = page
                          )
         groups = list(logging_config["logs"].keys())
         groups = groups[((page-1)*10):(page*10)]
@@ -22,27 +22,26 @@ class ConfigButton(gui.MenuGUI):
         self.add_item(button)
     
     async def open_modal_button_callback(self, interaction: discord.Interaction):
-        if not await users.has_permission(interaction.user.id, "sonny_logging:log_admin"):
+        if not await users.has_permission(interaction.guild.id, interaction.user.id, "sonny_logging:log_admin"):
             return await interaction.response.send_message(":warning: No permission.", ephemeral=True)
         group = interaction.data["custom_id"]
 
-        view = ConfigSubButton(self.interaction, group, self.page)
+        view = ConfigSubButton(group, self.page)
         if logging_config["logs"][group][0] == 0:
             content = "Channel: None"
         else:
             content = f"Channel: <#{logging_config["logs"][group][0]}>"
-        await self.interaction.edit_original_response(content=content, view=view)
+        await interaction.message.edit(content=content, view=view)
         await interaction.response.defer(ephemeral=True, thinking=False)
 
     async def new_group(self, interaction: discord.Interaction):
-        if not await users.has_permission(interaction.user.id, "sonny_logging:log_admin"):
+        if not await users.has_permission(interaction.guild.id, interaction.user.id, "sonny_logging:log_admin"):
             return await interaction.response.send_message(":warning: No permission.", ephemeral=True)
         return await interaction.response.send_modal(NewLogGroup(self.interaction))
             
-class ConfigSubButton(gui.MenuGUI):
-    def __init__(self, interaction, data_transfer = None, page = 1):
-        super().__init__(interaction = interaction,
-                         element_count = len(logging_config["logs"][data_transfer][1:]),
+class ConfigSubButton(gui.PageUI):
+    def __init__(self, data_transfer = None, page = 1):
+        super().__init__(element_count = len(logging_config["logs"][data_transfer][1:]),
                          data_transfer = data_transfer,
                          interaction_permission="sonny_logging:log_admin"
                          )
@@ -72,7 +71,7 @@ class ConfigSubButton(gui.MenuGUI):
         max_values=1
     )
     async def select_callback(self, interaction: discord.Interaction, select: discord.ui.ChannelSelect):
-        if not await users.has_permission(interaction.user.id, "sonny_logging:log_admin"):
+        if not await users.has_permission(interaction.guild.id, interaction.user.id, "sonny_logging:log_admin"):
             return await interaction.response.send_message(":warning: No permission.", ephemeral=True)
         channel = select.values[0] 
         await interaction.response.defer(ephemeral=True, thinking=False)
@@ -80,52 +79,50 @@ class ConfigSubButton(gui.MenuGUI):
         for log in logging_config["logs"][self.data_transfer][1:]:
             logging_config["logged_actions"][log] = channel.id
         content = f"Channel: <#{logging_config["logs"][self.data_transfer][0]}>"
-        await self.interaction.edit_original_response(content=content)
+        await interaction.message.edit(content=content)
         config.overwrite(logging_config)
 
     async def open_modal_button_callback(self, interaction: discord.Interaction):
-        if not await users.has_permission(interaction.user.id, "sonny_logging:log_admin"):
+        if not await users.has_permission(interaction.guild.id, interaction.user.id, "sonny_logging:log_admin"):
             return await interaction.response.send_message(":warning: No permission.", ephemeral=True)
-        old_interaction = self.interaction
         log = interaction.data["custom_id"]
         logging_config["logs"][self.data_transfer].remove(log)
         logging_config["logged_actions"].pop(log)
         logging_config["unlogged_actions"].append(log)
         config.overwrite(logging_config)
         
-        view = ConfigSubButton(old_interaction, self.data_transfer)
+        view = ConfigSubButton(self.data_transfer)
         if logging_config["logs"][self.data_transfer][0] == 0:
             content = "Channel: None"
         else:
             content = f"Channel: <#{logging_config["logs"][self.group][0]}>"
-        await old_interaction.edit_original_response(content=content, view=view)
+        await interaction.message.edit(content=content, view=view)
         await interaction.response.defer(ephemeral=True, thinking=False)
     
     async def back(self, interaction: discord.Interaction):
-        if not await users.has_permission(interaction.user.id, "sonny_logging:log_admin"):
+        if not await users.has_permission(interaction.guild.id, interaction.user.id, "sonny_logging:log_admin"):
             return await interaction.response.send_message(":warning: No permission.", ephemeral=True)
-        view = ConfigButton(self.interaction, self.page)
-        await self.interaction.edit_original_response(content="", view=view)
+        view = ConfigButton(self.page)
+        await interaction.message.edit(content="", view=view)
         await interaction.response.defer(ephemeral=True, thinking=False)
 
     async def new_action(self, interaction: discord.Interaction):
-        if not await users.has_permission(interaction.user.id, "sonny_logging:log_admin"):
+        if not await users.has_permission(interaction.guild.id, interaction.user.id, "sonny_logging:log_admin"):
             return await interaction.response.send_message(":warning: No permission.", ephemeral=True)
-        view = NewAction(self.interaction, self.data_transfer)
-        await self.interaction.edit_original_response(content="", view=view)
+        view = NewAction(self.data_transfer)
+        await interaction.message.edit(content="", view=view)
         await interaction.response.defer(ephemeral=True, thinking=False)
     
     async def delete(self, interaction: discord.Interaction):
-        if not await users.has_permission(interaction.user.id, "sonny_logging:log_admin"):
+        if not await users.has_permission(interaction.guild.id, interaction.user.id, "sonny_logging:log_admin"):
             return await interaction.response.send_message(":warning: No permission.", ephemeral=True)
-        view = DeleteConfirm(self.interaction, self.data_transfer, self.page)
-        await self.interaction.edit_original_response(content="Are you sure?",view=view)
+        view = DeleteConfirm(self.data_transfer, self.page)
+        await interaction.message.edit(content="Are you sure?",view=view)
         await interaction.response.defer(ephemeral=True, thinking=False)
 
 class NewLogGroup(discord.ui.Modal, title="Create new group"):
-    def __init__(self, old_interaction):
+    def __init__(self):
         super().__init__()
-        self.old_interaction = old_interaction
         self.user_input = discord.ui.TextInput(
             label=f"Enter group name",
             placeholder="",
@@ -136,21 +133,19 @@ class NewLogGroup(discord.ui.Modal, title="Create new group"):
     
     async def on_submit(self, interaction: discord.Interaction):
         value = self.user_input.value
-        old_interaction = self.old_interaction
         if value in ["new", "page1", "back1", "select", "next1", "last"]:
             return await interaction.response.send_message("Sorry, that name is reserved.", ephemeral=True)
         if value in logging_config["logs"].keys():
             return await interaction.response.send_message("Name already in use.", ephemeral=True)
         logging_config["logs"][value] = [0]
         config.overwrite(logging_config)
-        view = ConfigSubButton(old_interaction, value)
-        await old_interaction.edit_original_response(content="", view=view)
+        view = ConfigSubButton(value)
+        await interaction.message.edit(content="", view=view)
         return await interaction.response.defer(ephemeral=True, thinking=False)
 
 class DeleteConfirm(discord.ui.View):
-    def __init__(self, old_interaction: discord.Interaction, group, page):
+    def __init__(self, group, page):
         super().__init__(timeout=None)
-        self.old_interaction = old_interaction
         self.group = group
         self.page = page
         button = discord.ui.Button(label="Yes", style=discord.ButtonStyle.success, custom_id="yes")
@@ -161,32 +156,31 @@ class DeleteConfirm(discord.ui.View):
         self.add_item(button)
 
     async def confirmation(self, interaction: discord.Interaction):
-        if not await users.has_permission(interaction.user.id, "sonny_logging:log_admin"):
+        if not await users.has_permission(interaction.guild.id, interaction.user.id, "sonny_logging:log_admin"):
             return await interaction.response.send_message(":warning: No permission.", ephemeral=True)
         for action in logging_config["logs"][self.group][1:]:
             logging_config["unlogged_actions"].append(action)
             logging_config["logged_actions"].pop(action)
         logging_config["logs"].pop(self.group)
         config.overwrite(logging_config)
-        view = ConfigButton(self.old_interaction, self.page)
-        await self.old_interaction.edit_original_response(content="", view=view)
+        view = ConfigButton(self.page)
+        await interaction.message.edit(content="", view=view)
         await interaction.response.defer(ephemeral=True, thinking=False)
 
     async def back(self, interaction: discord.Interaction):
-        if not await users.has_permission(interaction.user.id, "sonny_logging:log_admin"):
+        if not await users.has_permission(interaction.guild.id, interaction.user.id, "sonny_logging:log_admin"):
             return await interaction.response.send_message(":warning: No permission.", ephemeral=True)
-        view = ConfigSubButton(self.old_interaction, self.group, self.page)
+        view = ConfigSubButton(self.group, self.page)
         if logging_config["logs"][self.group][0] == 0:
             content = "Channel: None"
         else:
             content = f"Channel: <#{logging_config["logs"][self.group][0]}>"
-        await self.old_interaction.edit_original_response(content=content, view=view)
+        await interaction.message.edit(content=content, view=view)
         await interaction.response.defer(ephemeral=True, thinking=False)
 
-class NewAction(gui.MenuGUI):
-    def __init__(self, interaction, data_transfer, page = 1):
-        super().__init__(interaction=interaction,
-                         element_count=len(logging_config["unlogged_actions"]),
+class NewAction(gui.PageUI):
+    def __init__(self, data_transfer, page = 1):
+        super().__init__(element_count=len(logging_config["unlogged_actions"]),
                          data_transfer=data_transfer,
                          page = page,
                          interaction_permission="sonny_logging:log_admin"
@@ -204,7 +198,7 @@ class NewAction(gui.MenuGUI):
         self.add_item(button)
 
     async def open_modal_button_callback(self, interaction: discord.Interaction):
-        if not await users.has_permission(interaction.user.id, "sonny_logging:log_admin"):
+        if not await users.has_permission(interaction.guild.id, interaction.user.id, "sonny_logging:log_admin"):
             return await interaction.response.send_message(":warning: No permission.", ephemeral=True)
         action = interaction.data["custom_id"]
         
@@ -221,4 +215,4 @@ class NewAction(gui.MenuGUI):
             self.text = "Channel: None"
         else:
             self.text = f"Channel: <#{logging_config["logs"][self.data_transfer][0]}>"
-        await self.interaction.edit_original_response(content=self.text, view=view)
+        await interaction.message.edit(content=self.text, view=view)
